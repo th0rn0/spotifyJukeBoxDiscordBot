@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -26,6 +27,9 @@ import (
 var token string
 var adminUsername string
 var adminPassword string
+var apiUrl string
+
+var commandPrefix = "!"
 
 func main() {
 
@@ -38,6 +42,7 @@ func main() {
 	token = os.Getenv("DISCORD_TOKEN")
 	adminUsername = os.Getenv("API_USERNAME")
 	adminPassword = os.Getenv("API_PASSWORD")
+	apiUrl = os.Getenv("API_URL")
 
 	// Create a new Discord session using the provided bot token.
 	dg, err := discordgo.New("Bot " + token)
@@ -83,12 +88,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
-	// If the message is "ping" reply with "Pong!"
-	if m.Content == "current" {
+
+	// Current Track
+	if m.Content == commandPrefix+"current" {
 		// DEBUG - Change this to the output of the API
 		var track *spotify.FullTrack
 
-		resp, err := http.Get("http://localhost:8888/tracks/current")
+		resp, err := http.Get(apiUrl + "/tracks/current")
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -111,12 +117,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		returnString = track.Name + " - " + returnString
 	}
 
-	if strings.HasPrefix(m.Content, "search") {
+	// Search Track
+	if strings.HasPrefix(m.Content, commandPrefix+"search") {
 		var apiSearchOutput APIResponseSearchOutput
 
 		searchTerm := strings.Replace(m.Content, "search ", "", -1)
 
-		resp, err := http.Get("http://localhost:8888/search/" + searchTerm)
+		resp, err := http.Get(apiUrl + "/search/" + searchTerm)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -136,8 +143,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
-	if strings.HasPrefix(m.Content, "add") {
-
+	// Add Track
+	if strings.HasPrefix(m.Content, commandPrefix+"add") {
 		songId := strings.Replace(m.Content, "add ", "", -1)
 
 		addTrackInput := APIAddTrack{
@@ -145,7 +152,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		postBody, _ := json.Marshal(addTrackInput)
 
-		req, err := http.NewRequest("POST", "http://localhost:8888/tracks/add", bytes.NewBuffer(postBody))
+		req, err := http.NewRequest("POST", apiUrl+"/tracks/add", bytes.NewBuffer(postBody))
 
 		if err != nil {
 			log.Fatal(err)
@@ -164,8 +171,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		returnString = string(body)
 	}
 
-	if strings.HasPrefix(m.Content, "skip") {
-		req, err := http.NewRequest("POST", "http://localhost:8888/player/skip", nil)
+	// Skip
+	if strings.HasPrefix(m.Content, commandPrefix+"skip") {
+		req, err := http.NewRequest("POST", apiUrl+"/player/skip", nil)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -182,8 +190,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		returnString = string(body)
 	}
 
-	if strings.HasPrefix(m.Content, "play") {
-		req, err := http.NewRequest("POST", "http://localhost:8888/player/play", nil)
+	// Play
+	if strings.HasPrefix(m.Content, commandPrefix+"play") {
+		req, err := http.NewRequest("POST", apiUrl+"/player/play", nil)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -200,8 +209,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		returnString = string(body)
 	}
 
-	if strings.HasPrefix(m.Content, "pause") {
-		req, err := http.NewRequest("POST", "http://localhost:8888/player/pause", nil)
+	// Pause
+	if strings.HasPrefix(m.Content, commandPrefix+"pause") {
+		req, err := http.NewRequest("POST", apiUrl+"/player/pause", nil)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -216,6 +226,36 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			log.Fatalln(err)
 		}
 		returnString = string(body)
+	}
+
+	// Volume
+	if strings.HasPrefix(m.Content, commandPrefix+"volume") {
+		volTerm := strings.Replace(m.Content, "volume ", "", -1)
+
+		intVar, _ := strconv.Atoi(volTerm)
+		volumeInput := APIVolume{
+			Volume: intVar,
+		}
+		postBody, _ := json.Marshal(volumeInput)
+
+		req, err := http.NewRequest("POST", apiUrl+"/player/vol", bytes.NewBuffer(postBody))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+		req.SetBasicAuth(adminUsername, adminPassword)
+		req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		returnString = string(body)
+
 	}
 
 	s.ChannelMessageSend(m.ChannelID, returnString)

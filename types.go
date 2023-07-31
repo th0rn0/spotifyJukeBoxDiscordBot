@@ -17,6 +17,10 @@ type APIAddTrack struct {
 	URI spotify.URI `json:"uri"`
 }
 
+type APIVolume struct {
+	Volume int `json:"volume"`
+}
+
 // API Responses
 type APIResponseSearchOutput struct {
 	Playlists []APIResponsePlaylistSearchOutput `json:"playlist"`

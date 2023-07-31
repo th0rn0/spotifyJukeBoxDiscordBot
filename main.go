@@ -121,7 +121,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if strings.HasPrefix(m.Content, commandPrefix+"search") {
 		var apiSearchOutput APIResponseSearchOutput
 
-		searchTerm := strings.Replace(m.Content, "search ", "", -1)
+		searchTerm := strings.Replace(m.Content, commandPrefix+"search ", "", -1)
 
 		resp, err := http.Get(apiUrl + "/search/" + searchTerm)
 		if err != nil {
@@ -145,7 +145,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// Add Track
 	if strings.HasPrefix(m.Content, commandPrefix+"add") {
-		songId := strings.Replace(m.Content, "add ", "", -1)
+		songId := strings.Replace(m.Content, commandPrefix+"add ", "", -1)
 
 		addTrackInput := APIAddTrack{
 			URI: spotify.URI("spotify:track:" + songId),
@@ -230,7 +230,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// Volume
 	if strings.HasPrefix(m.Content, commandPrefix+"volume") {
-		volTerm := strings.Replace(m.Content, "volume ", "", -1)
+		volTerm := strings.Replace(m.Content, commandPrefix+"volume ", "", -1)
 
 		intVar, _ := strconv.Atoi(volTerm)
 		volumeInput := APIVolume{
